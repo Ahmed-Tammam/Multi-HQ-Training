@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <title>Pilot Training Manager</title>
+    <style>
+        /* --- BASE STYLES --- */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            color: #002147; margin: 0; padding: 0; background: #525659; padding-top: 140px; 
+        }
+        
+        /* --- DASHBOARD HEADER --- */
+        .app-dashboard {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: #1a1a1a; color: white;
+            padding: 10px; z-index: 10000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .dashboard-row { display: flex; justify-content: space-between; align-items: center; }
+        .app-logo { height: 40px; width: 40px; border-radius: 8px; margin-right: 10px; vertical-align: middle; }
+        .app-title { font-weight: bold; font-size: 18px; color: #fff; display: inline-block; }
+        
+        .student-select {
+            padding: 10px; font-size: 16px; border-radius: 5px; flex-grow: 1; margin-right: 10px;
+        }
+        
+        .btn { 
+            padding: 10px 15px; font-size: 14px; font-weight: bold; 
+            border: none; border-radius: 6px; cursor: pointer; color: #fff; text-transform: uppercase;
+        }
+        .btn-new { background: #2980b9; }
+        .btn-save { background: #27ae60; }
+        .btn-pdf { background: #f1c40f; color: #000; }
+        .btn-del { background: #c0392b; font-size: 12px; }
+
+        /* --- PAGE LAYOUT --- */
+        .page { 
+            background: white; box-sizing: border-box; margin: 20px auto; padding: 15mm;
+            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 297mm;
+            position: relative; /* Allows absolute positioning inside if needed */
+        }
+
+        /* --- LOGO STAMP STYLE --- */
+        .logo-stamp {
+            height: 60px; /* Adjust size here */
+            width: auto;
+            margin-right: 15px;
+            vertical-align: bottom;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media screen and (max-width: 850px) {
+            .page { width: 96%; padding: 10px; margin: 10px auto; }
+            input[type="checkbox"], input[type="radio"] { transform: scale(1.4); margin: 5px; }
+            body { padding-top: 130px; }
+            .logo-stamp { height: 40px; } /* Smaller logo on phone */
+        }
+
+        /* --- FORM HEADER --- */
+        .header { 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            border-bottom: 4px solid #002147; padding-bottom: 10px; margin-bottom: 20px; 
+        }
+        .header-left { display: flex; align-items: flex-end; }
+        .title-main { font-size: 28px; font-weight: 900; line-height: 0.9; }
+        .title-sub { text-align: right; font-weight: bold; color: #444; font-size: 11px; }
+        
+        .section-bar { background: #002147; color: white; padding: 6px 10px; font-weight: bold; margin-top: 15px; text-transform: uppercase; font-size: 12px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; table-layout: fixed; }
+        td, th { border: 1px solid #ccc; padding: 6px; vertical-align: middle; font-size: 11px; }
+        th { background: #eee; text-align: left; }
+        
+        input[type="text"], input[type="date"] { width: 98%; border: none; border-bottom: 1px solid #ddd; font-size: 12px; outline: none; background: transparent; border-radius: 0; }
+        textarea { width: 100%; border: none; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: transparent; }
+        .record-container { border: 2px solid #002147; margin-top: 15px; padding: 10px; }
+
+        @media print {
+    /* 1. Hide the Dashboard and everything else not needed */
+    body { 
+        background: white !important; 
+        padding-top: 0 !important; 
+        margin: 0 !important;
+    }
+    .app-dashboard { display: none !important; }
+
+    /* 2. Strict Page Control */
+    .page { 
+        width: 210mm !important; 
+        height: 296mm !important; /* Slightly less than 297 to prevent overflow */
+        margin: 0 !important; 
+        padding: 15mm !important;
+        border: none !important; 
+        box-shadow: none !important; 
+        display: block !important;
+        page-break-after: always !important; /* Force the next page to a new sheet */
+        page-break-inside: avoid !important; /* Prevent a single page from splitting */
+        overflow: hidden !important; /* Prevents tiny spills from creating extra pages */
+    }
+
+    /* 3. Cleanup: Hide empty elements or extra spacing */
+    #records-wrapper { margin: 0 !important; padding: 0 !important; }
+}
+    </style>
+</head>
+<body>
+
+    <div class="app-dashboard">
+        <div class="dashboard-row">
+            <div>
+                <img src="icon.png" class="app-logo" alt="App Icon">
+                <span class="app-title">MULTI-HQ MANAGER</span>
+            </div>
+            <div>
+                 <button class="btn btn-pdf" onclick="window.print()">🖨️ PDF</button>
+            </div>
+        </div>
+        <div class="dashboard-row">
+            <select id="studentList" class="student-select" onchange="loadStudent(this.value)">
+                <option value="">-- Select Student --</option>
+            </select>
+            <button class="btn btn-new" onclick="createNewStudent()">+ New</button>
+            <button class="btn btn-save" onclick="saveCurrentStudent()">💾 Save</button>
+            <button class="btn btn-del" onclick="deleteStudent()">🗑️</button>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="header">
+            <div class="header-left">
+                <img src="stamp.png" class="logo-stamp" alt="Logo">
+                <div class="title-main">MULTI-HQ</div>
+            </div>
+            <div class="title-sub">TRAINING FILE<br>Pilot Record</div>
+        </div>
+
+        <table>
+            <tr>
+                <td style="width:15%">Name:</td>
+                <td><input type="text" id="stu_name" placeholder="Enter Name"></td>
+                <td style="width:15%">Lic. No.:</td>
+                <td><input type="text" id="stu_lic" placeholder="Enter License (ID)"></td>
+            </tr>
+            <tr>
+                <td>Start Date:</td>
+                <td><input type="date" id="stu_sdate"></td>
+                <td>Total Hours:</td>
+                <td><input type="text" id="stu_thours"></td>
+            </tr>
+            <tr>
+                <td>Membership:</td>
+                <td colspan="3"><input type="text" id="stu_memb"></td>
+            </tr>
+        </table>
+
+        <div class="section-bar">Type of Training</div>
+        <table>
+            <tr>
+                <td>Group 1 <input type="checkbox" id="t_g1"></td>
+                <td>Group 3 <input type="checkbox" id="t_g3"></td>
+                <td>Multi Eng <input type="checkbox" id="t_me"></td>
+                <td>Time Building <input type="checkbox" id="t_tb"></td>
+            </tr>
+            <tr>
+                <td>Single <input type="checkbox" id="t_s"></td>
+                <td>Multi <input type="checkbox" id="t_m"></td>
+                <td colspan="2">Single & Multi <input type="checkbox" id="t_sm"></td>
+            </tr>
+        </table>
+
+        <div class="section-bar">Document Review</div>
+        <table>
+            <tr>
+                <td>Lic Valid: <input type="checkbox" id="doc_l"></td>
+                <td>Med Valid: <input type="checkbox" id="doc_m"></td>
+                <td>Logbook: <input type="checkbox" id="doc_lb"></td>
+            </tr>
+            <tr>
+                <td>Lic Exp: <input type="date" id="doc_lexp"></td>
+                <td colspan="2">Med Exp: <input type="date" id="doc_mexp"></td>
+            </tr>
+        </table>
+
+        <div class="section-bar">Technical Knowledge</div>
+        <div style="display: flex; gap: 10px;">
+            <table style="width:50%">
+                <tr><th>Topic</th><th style="width:30px">✔</th></tr>
+                <tr><td>Flight Management</td><td style="text-align:center"><input type="checkbox" id="tk1"></td></tr>
+                <tr><td>Problem Solving</td><td style="text-align:center"><input type="checkbox" id="tk2"></td></tr>
+                <tr><td>Decision Making</td><td style="text-align:center"><input type="checkbox" id="tk3"></td></tr>
+                <tr><td>Situational Awareness</td><td style="text-align:center"><input type="checkbox" id="tk4"></td></tr>
+                <tr><td>Communication</td><td style="text-align:center"><input type="checkbox" id="tk5"></td></tr>
+            </table>
+            <table style="width:50%">
+                <tr><th>Topic</th><th style="width:30px">✔</th></tr>
+                <tr><td>Landing Minima</td><td style="text-align:center"><input type="checkbox" id="tk11"></td></tr>
+                <tr><td>Reduced VIS Ops</td><td style="text-align:center"><input type="checkbox" id="tk12"></td></tr>
+                <tr><td>Approach Ban</td><td style="text-align:center"><input type="checkbox" id="tk13"></td></tr>
+                <tr><td>SID / STAR</td><td style="text-align:center"><input type="checkbox" id="tk14"></td></tr>
+                <tr><td>Emergency Proc.</td><td style="text-align:center"><input type="checkbox" id="tk20"></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div id="records-wrapper"></div>
+
+    <script>
+        // --- 1. GENERATE RECORD PAGES (With Logo on Every Page) ---
+        const wrapper = document.getElementById('records-wrapper');
+        for(let i=1; i<=20; i++) {
+            const div = document.createElement('div');
+            div.className = 'page';
+            // Added img tag to the header below
+            div.innerHTML = `
+                <div class="header">
+                    <div class="header-left">
+                        <img src="stamp.png" class="logo-stamp" alt="Logo">
+                        <div class="title-main">MULTI-HQ</div>
+                    </div>
+                    <div class="title-sub">Record #${i}</div>
+                </div>
+                <div class="record-container">
+                    <table>
+                        <tr>
+                            <td style="width:15%">Exercise:</td><td><input type="text" id="r${i}_ex"></td>
+                            <td style="width:15%">Date:</td><td><input type="date" id="r${i}_date"></td>
+                        </tr>
+                        <tr>
+                            <td>AC REG:</td><td><input type="text" id="r${i}_reg"></td>
+                            <td>Time:</td><td><input type="text" id="r${i}_time"></td>
+                        </tr>
+                        <tr>
+                            <td>Total Time:</td><td colspan="3"><input type="text" id="r${i}_tt"></td>
+                        </tr>
+                        <tr><td colspan="4" style="background:#eee; font-weight:bold">NOTES:</td></tr>
+                        <tr><td colspan="4"><textarea id="r${i}_notes" rows="28"></textarea></td></tr>
+                        <tr>
+                            <td><b>Grade:</b></td>
+                            <td colspan="3">
+                                1 <input type="radio" name="g${i}" value="1" id="g${i}_1"> 
+                                2 <input type="radio" name="g${i}" value="2" id="g${i}_2"> 
+                                3 <input type="radio" name="g${i}" value="3" id="g${i}_3"> 
+                                4 <input type="radio" name="g${i}" value="4" id="g${i}_4">
+                            </td>
+                        </tr>
+                        <tr><td><b>Signature:</b></td><td colspan="3" style="height:40px"></td></tr>
+                    </table>
+                </div>
+            `;
+            wrapper.appendChild(div);
+        }
+
+        // --- 2. PWA SERVICE WORKER ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Service Worker Registered'));
+        }
+
+        // --- 3. STUDENT MANAGEMENT LOGIC ---
+        const STORAGE_KEY = "pilot_db_v1";
+        let currentStudentId = null;
+
+        function getDB() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        }
+        
+        function saveDB(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function refreshDropdown() {
+            const db = getDB();
+            const select = document.getElementById('studentList');
+            select.innerHTML = '<option value="">-- Select Student --</option>';
+            
+            Object.keys(db).forEach(id => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = db[id].name + " (" + id + ")";
+                if(id === currentStudentId) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function createNewStudent() {
+            const id = prompt("Enter Student License Number (Must be unique):");
+            if(!id) return;
+            const db = getDB();
+            if(db[id]) { alert("Student already exists!"); return; }
+            
+            document.querySelectorAll('input, textarea').forEach(el => {
+                if(el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                else el.value = '';
+            });
+
+            document.getElementById('stu_lic').value = id;
+            currentStudentId = id;
+            saveCurrentStudent(); 
+        }
+
+        function saveCurrentStudent() {
+            const idInput = document.getElementById('stu_lic');
+            let id = idInput.value.trim();
+            const name = document.getElementById('stu_name').value.trim() || "Unnamed";
+            
+            if(!id) { alert("Please enter a License Number to save."); return; }
+            
+            currentStudentId = id;
+            const formData = {};
+            document.querySelectorAll('input, textarea').forEach(el => {
+                if(el.type === 'checkbox' || el.type === 'radio') {
+                    if(el.checked) formData[el.id] = true;
+                } else {
+                    formData[el.id] = el.value;
+                }
+            });
+
+            const db = getDB();
+            db[id] = { name: name, lastMod: Date.now(), data: formData };
+            saveDB(db);
+            refreshDropdown();
+            alert(`Saved ${name}!`);
+        }
+
+        function loadStudent(id) {
+            if(!id) return;
+            const db = getDB();
+            const student = db[id];
+            
+            if(student) {
+                currentStudentId = id;
+                document.querySelectorAll('input, textarea').forEach(el => {
+                    if(el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                    else el.value = '';
+                });
+
+                Object.keys(student.data).forEach(key => {
+                    const el = document.getElementById(key);
+                    if(el) {
+                        if(el.type === 'checkbox' || el.type === 'radio') el.checked = true;
+                        else el.value = student.data[key];
+                    }
+                });
+            }
+        }
+
+        function deleteStudent() {
+            if(!currentStudentId) return;
+            if(confirm("Delete this student profile permanently?")) {
+                const db = getDB();
+                delete db[currentStudentId];
+                saveDB(db);
+                currentStudentId = null;
+                document.querySelectorAll('input, textarea').forEach(el => {
+                    if(el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                    else el.value = '';
+                });
+                refreshDropdown();
+            }
+        }
+
+        refreshDropdown();
+    </script>
+</body>
+</html>
