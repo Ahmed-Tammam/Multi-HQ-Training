@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
-    <title>Pilot Training Manager</title>
+    <title>Multi-HQ Pilot Manager</title>
     <style>
         /* --- BASE STYLES --- */
         body { 
@@ -15,7 +15,6 @@
             color: #002147; margin: 0; padding: 0; background: #525659; padding-top: 140px; 
         }
         
-        /* --- DASHBOARD HEADER --- */
         .app-dashboard {
             position: fixed; top: 0; left: 0; right: 0;
             background: #1a1a1a; color: white;
@@ -25,33 +24,27 @@
         }
         .dashboard-row { display: flex; justify-content: space-between; align-items: center; }
         .app-logo { height: 40px; width: 40px; border-radius: 8px; margin-right: 10px; vertical-align: middle; }
-        .app-title { font-weight: bold; font-size: 18px; color: #fff; display: inline-block; }
+        .app-title { font-weight: bold; font-size: 18px; color: #fff; }
         
-        .student-select {
-            padding: 10px; font-size: 16px; border-radius: 5px; flex-grow: 1; margin-right: 10px;
-        }
+        .student-select { padding: 10px; font-size: 16px; border-radius: 5px; flex-grow: 1; margin-right: 10px; }
         
-        .btn { 
-            padding: 10px 15px; font-size: 14px; font-weight: bold; 
-            border: none; border-radius: 6px; cursor: pointer; color: #fff; text-transform: uppercase;
-        }
+        .btn { padding: 10px 15px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: #fff; text-transform: uppercase; }
         .btn-new { background: #2980b9; }
         .btn-save { background: #27ae60; }
         .btn-pdf { background: #f1c40f; color: #000; }
-        .btn-del { background: #c0392b; font-size: 12px; }
+        .btn-del { background: #c0392b; }
 
         /* --- PAGE LAYOUT --- */
         .page { 
             background: white; box-sizing: border-box; margin: 20px auto; padding: 15mm;
-            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 280mm;
-            position: relative; 
+            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 285mm;
+            position: relative; page-break-after: always;
         }
 
         .logo-stamp { height: 60px; width: auto; margin-right: 15px; vertical-align: bottom; }
 
         @media screen and (max-width: 850px) {
             .page { width: 96%; padding: 10px; margin: 10px auto; min-height: auto; }
-            input[type="checkbox"], input[type="radio"] { transform: scale(1.4); margin: 5px; }
             body { padding-top: 130px; }
             .logo-stamp { height: 40px; }
         }
@@ -66,30 +59,19 @@
         td, th { border: 1px solid #ccc; padding: 6px; vertical-align: middle; font-size: 11px; }
         th { background: #eee; text-align: left; }
         
-        input[type="text"], input[type="date"] { width: 98%; border: none; border-bottom: 1px solid #ddd; font-size: 12px; outline: none; background: transparent; border-radius: 0; }
+        input[type="text"], input[type="date"] { width: 98%; border: none; border-bottom: 1px solid #ddd; font-size: 12px; outline: none; background: transparent; }
         textarea { width: 100%; border: none; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: transparent; }
-        .record-container { border: 2px solid #002147; margin-top: 15px; padding: 10px; }
 
-        /* --- BULLETPROOF PRINTING --- */
+        /* --- SIGNATURE CANVAS --- */
+        .sig-container { border: 1px dashed #ccc; background: #fafafa; position: relative; height: 60px; }
+        canvas.signature-pad { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+        .clear-sig { position: absolute; top: 0; right: 0; font-size: 8px; background: #ddd; padding: 2px; cursor: pointer; border: none; }
+
         @media print {
-            @page { margin: 0; size: auto; } /* Removes browser headers/footers */
+            @page { margin: 0; }
             body { background: white !important; padding: 0 !important; margin: 0 !important; width: 210mm; }
-            .app-dashboard { display: none !important; }
-
-            .page { 
-                width: 210mm !important; 
-                height: 270mm !important; /* Safety buffer to prevent spillover */
-                margin: 0 !important; 
-                padding: 10mm 15mm !important;
-                border: none !important; 
-                box-shadow: none !important; 
-                display: block !important;
-                page-break-after: always !important; 
-                page-break-inside: avoid !important;
-                overflow: hidden !important;
-            }
-            #records-wrapper { margin: 0 !important; padding: 0 !important; }
-            textarea { rows: 20 !important; } /* Force shrink for print */
+            .app-dashboard, .clear-sig { display: none !important; }
+            .page { width: 210mm !important; height: 290mm !important; margin: 0 !important; padding: 15mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; }
         }
     </style>
 </head>
@@ -128,19 +110,67 @@
             <tr><td>Lic Valid: <input type="checkbox" id="doc_l"></td><td>Med Valid: <input type="checkbox" id="doc_m"></td><td>Logbook: <input type="checkbox" id="doc_lb"></td></tr>
             <tr><td>Lic Exp: <input type="date" id="doc_lexp"></td><td colspan="2">Med Exp: <input type="date" id="doc_mexp"></td></tr>
         </table>
-        <div class="section-bar">Technical Knowledge</div>
-        <div style="display: flex; gap: 10px;">
+    </div>
+
+    <div class="page">
+        <div class="header">
+            <div class="header-left"><img src="stamp.png" class="logo-stamp" alt="Logo"><div class="title-main">TECHNICAL</div></div>
+            <div class="title-sub">KNOWLEDGE DISCUSSION</div>
+        </div>
+        <div style="display: flex; gap: 15px;">
             <table style="width:50%">
-                <tr><th>Topic</th><th>✔</th></tr>
-                <tr><td>Flight Management</td><td style="text-align:center"><input type="checkbox" id="tk1"></td></tr>
-                <tr><td>Problem Solving</td><td style="text-align:center"><input type="checkbox" id="tk2"></td></tr>
-                <tr><td>Decision Making</td><td style="text-align:center"><input type="checkbox" id="tk3"></td></tr>
+                <tr><th>Topic</th><th style="width:30px">✔</th></tr>
+                <tr><td>Flight Management</td><td><input type="checkbox" id="tk1"></td></tr>
+                <tr><td>Problem Solving</td><td><input type="checkbox" id="tk2"></td></tr>
+                <tr><td>Decision Making</td><td><input type="checkbox" id="tk3"></td></tr>
+                <tr><td>Situational Awareness</td><td><input type="checkbox" id="tk4"></td></tr>
+                <tr><td>Communication</td><td><input type="checkbox" id="tk5"></td></tr>
+                <tr><td>Workload Management</td><td><input type="checkbox" id="tk6"></td></tr>
+                <tr><td>CDFA</td><td><input type="checkbox" id="tk7"></td></tr>
+                <tr><td>Stable Approach</td><td><input type="checkbox" id="tk8"></td></tr>
+                <tr><td>Wx reports & forecasts</td><td><input type="checkbox" id="tk9"></td></tr>
+                <tr><td>Graphic Area Forecast</td><td><input type="checkbox" id="tk10"></td></tr>
+                <tr><td>Surface Analysis chart</td><td><input type="checkbox" id="tk11"></td></tr>
+                <tr><td>Radar & Satellite</td><td><input type="checkbox" id="tk12"></td></tr>
+                <tr><td>WxCam</td><td><input type="checkbox" id="tk13"></td></tr>
+                <tr><td>SIG Wx Chart</td><td><input type="checkbox" id="tk14"></td></tr>
+                <tr><td>Winds & Temp Aloft</td><td><input type="checkbox" id="tk15"></td></tr>
+                <tr><td>SIGMETS</td><td><input type="checkbox" id="tk16"></td></tr>
+                <tr><td>PIREPS</td><td><input type="checkbox" id="tk17"></td></tr>
+                <tr><td>NOTAMS</td><td><input type="checkbox" id="tk18"></td></tr>
+                <tr><td>WAAS NOTAMS</td><td><input type="checkbox" id="tk19"></td></tr>
+                <tr><td>RAIM Predictions</td><td><input type="checkbox" id="tk20"></td></tr>
+                <tr><td>ALT WX Mins</td><td><input type="checkbox" id="tk21"></td></tr>
+                <tr><td>Takeoff Minima</td><td><input type="checkbox" id="tk22"></td></tr>
+                <tr><td>Takeoff ALT</td><td><input type="checkbox" id="tk23"></td></tr>
+                <tr><td>Icing Encounters</td><td><input type="checkbox" id="tk24"></td></tr>
             </table>
             <table style="width:50%">
-                <tr><th>Topic</th><th>✔</th></tr>
-                <tr><td>Approach Ban</td><td style="text-align:center"><input type="checkbox" id="tk13"></td></tr>
-                <tr><td>SID / STAR</td><td style="text-align:center"><input type="checkbox" id="tk14"></td></tr>
-                <tr><td>Emergency Proc.</td><td style="text-align:center"><input type="checkbox" id="tk20"></td></tr>
+                <tr><th>Topic</th><th style="width:30px">✔</th></tr>
+                <tr><td>Landing Minima</td><td><input type="checkbox" id="tk25"></td></tr>
+                <tr><td>Reduced/Low VIS ops</td><td><input type="checkbox" id="tk26"></td></tr>
+                <tr><td>Approach Ban</td><td><input type="checkbox" id="tk27"></td></tr>
+                <tr><td>Approach Charts</td><td><input type="checkbox" id="tk28"></td></tr>
+                <tr><td>Use of Automation</td><td><input type="checkbox" id="tk29"></td></tr>
+                <tr><td>Dep Proc SID</td><td><input type="checkbox" id="tk30"></td></tr>
+                <tr><td>Arrival Proc STAR</td><td><input type="checkbox" id="tk31"></td></tr>
+                <tr><td>Descend VIA</td><td><input type="checkbox" id="tk32"></td></tr>
+                <tr><td>RUNWAY Markings</td><td><input type="checkbox" id="tk33"></td></tr>
+                <tr><td>Holding</td><td><input type="checkbox" id="tk34"></td></tr>
+                <tr><td>RNAV App</td><td><input type="checkbox" id="tk35"></td></tr>
+                <tr><td>ILS App</td><td><input type="checkbox" id="tk36"></td></tr>
+                <tr><td>VOR App</td><td><input type="checkbox" id="tk37"></td></tr>
+                <tr><td>NDB App</td><td><input type="checkbox" id="tk38"></td></tr>
+                <tr><td>Missed App</td><td><input type="checkbox" id="tk39"></td></tr>
+                <tr><td>Transition to Lndg</td><td><input type="checkbox" id="tk40"></td></tr>
+                <tr><td>EMER PROC</td><td><input type="checkbox" id="tk41"></td></tr>
+                <tr><td>Engine Failure</td><td><input type="checkbox" id="tk42"></td></tr>
+                <tr><td>Elec Sys Failure</td><td><input type="checkbox" id="tk43"></td></tr>
+                <tr><td>Radio Failure</td><td><input type="checkbox" id="tk44"></td></tr>
+                <tr><td>Vacuum Sys Failure</td><td><input type="checkbox" id="tk45"></td></tr>
+                <tr><td>Anti-ice Failure</td><td><input type="checkbox" id="tk46"></td></tr>
+                <tr><td>GPS Failure</td><td><input type="checkbox" id="tk47"></td></tr>
+                <tr><td>De-icing Sys Failure</td><td><input type="checkbox" id="tk48"></td></tr>
             </table>
         </div>
     </div>
@@ -154,8 +184,8 @@
             div.className = 'page';
             div.innerHTML = `
                 <div class="header">
-                    <div class="header-left"><img src="stamp.png" class="logo-stamp" alt="Logo"><div class="title-main">MULTI-HQ</div></div>
-                    <div class="title-sub">Record #${i}</div>
+                    <div class="header-left"><img src="stamp.png" class="logo-stamp"><div class="title-main">RECORD</div></div>
+                    <div class="title-sub">#${i}</div>
                 </div>
                 <div class="record-container">
                     <table>
@@ -163,17 +193,42 @@
                         <tr><td>AC REG:</td><td><input type="text" id="r${i}_reg"></td><td>Time:</td><td><input type="text" id="r${i}_time"></td></tr>
                         <tr><td>Total Time:</td><td colspan="3"><input type="text" id="r${i}_tt"></td></tr>
                         <tr><td colspan="4" style="background:#eee; font-weight:bold">NOTES:</td></tr>
-                        <tr><td colspan="4"><textarea id="r${i}_notes" rows="20"></textarea></td></tr>
+                        <tr><td colspan="4"><textarea id="r${i}_notes" rows="22"></textarea></td></tr>
                         <tr><td><b>Grade:</b></td><td colspan="3">1 <input type="radio" name="g${i}" id="g${i}_1"> 2 <input type="radio" name="g${i}" id="g${i}_2"> 3 <input type="radio" name="g${i}" id="g${i}_3"> 4 <input type="radio" name="g${i}" id="g${i}_4"></td></tr>
-                        <tr><td><b>Signature:</b></td><td colspan="3" style="height:35px"></td></tr>
+                        <tr><td><b>Signature:</b></td><td colspan="3" class="sig-container"><button class="clear-sig" onclick="clearSig('sig${i}')">Clear</button><canvas id="sig${i}" class="signature-pad"></canvas></td></tr>
                     </table>
                 </div>`;
             wrapper.appendChild(div);
         }
 
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+        // --- SIGNATURE PAD LOGIC ---
+        function initSignatures() {
+            document.querySelectorAll('.signature-pad').forEach(canvas => {
+                const ctx = canvas.getContext('2d');
+                let drawing = false;
 
-        const STORAGE_KEY = "pilot_db_v1";
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
+                };
+
+                const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+                const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+                const stop = () => { drawing = false; };
+
+                canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+                ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+
+                canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+                canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); window.addEventListener('touchend', stop);
+            });
+        }
+        function clearSig(id) { const c = document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+
+        // --- DATABASE LOGIC ---
+        const STORAGE_KEY = "pilot_db_v2";
         let currentStudentId = null;
 
         function getDB() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -190,20 +245,19 @@
         }
 
         function createNewStudent() {
-            const id = prompt("Enter License Number:"); if(!id) return;
-            const db = getDB(); if(db[id]) { alert("Exists!"); return; }
-            document.querySelectorAll('input, textarea').forEach(el => { if(el.type === 'checkbox' || el.type === 'radio') el.checked = false; else el.value = ''; });
-            document.getElementById('stu_lic').value = id; currentStudentId = id; saveCurrentStudent(); 
+            const id = prompt("License Number:"); if(!id) return;
+            const db = getDB(); if(db[id]) return alert("Exists!");
+            currentStudentId = id; saveCurrentStudent(); 
         }
 
         function saveCurrentStudent() {
-            const id = document.getElementById('stu_lic').value.trim();
-            if(!id) return;
-            const formData = {};
+            const id = document.getElementById('stu_lic').value.trim(); if(!id) return;
+            const formData = { sigs: {} };
             document.querySelectorAll('input, textarea').forEach(el => {
                 if(el.type === 'checkbox' || el.type === 'radio') { if(el.checked) formData[el.id] = true; } 
                 else { formData[el.id] = el.value; }
             });
+            document.querySelectorAll('.signature-pad').forEach(c => { formData.sigs[c.id] = c.toDataURL(); });
             const db = getDB(); db[id] = { name: document.getElementById('stu_name').value, data: formData };
             saveDB(db); refreshDropdown(); alert("Saved!");
         }
@@ -217,14 +271,14 @@
                     const el = document.getElementById(key);
                     if(el) { if(el.type === 'checkbox' || el.type === 'radio') el.checked = true; else el.value = student.data[key]; }
                 });
+                Object.keys(student.data.sigs || {}).forEach(sid => {
+                    const c = document.getElementById(sid); const ctx = c.getContext('2d');
+                    const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = student.data.sigs[sid];
+                });
             }
         }
 
-        function deleteStudent() {
-            if(!currentStudentId) return;
-            if(confirm("Delete?")) { const db = getDB(); delete db[currentStudentId]; saveDB(db); currentStudentId = null; refreshDropdown(); }
-        }
-        refreshDropdown();
+        window.onload = () => { initSignatures(); refreshDropdown(); };
     </script>
 </body>
 </html>
