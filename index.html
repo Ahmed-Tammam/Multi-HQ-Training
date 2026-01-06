@@ -37,7 +37,7 @@
         /* --- PAGE LAYOUT --- */
         .page { 
             background: white; box-sizing: border-box; margin: 20px auto; padding: 15mm;
-            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 285mm;
+            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 296mm;
             position: relative; page-break-after: always;
         }
 
@@ -53,7 +53,9 @@
         .header-left { display: flex; align-items: flex-end; }
         .title-main { font-size: 28px; font-weight: 900; line-height: 0.9; }
         .title-sub { text-align: right; font-weight: bold; color: #444; font-size: 11px; }
-        .section-bar { background: #002147; color: white; padding: 6px 10px; font-weight: bold; margin-top: 15px; text-transform: uppercase; font-size: 12px; }
+        
+        /* THE BLUE BAR STYLE */
+        .section-bar { background: #002147; color: white; padding: 6px 10px; font-weight: bold; margin-top: 15px; text-transform: uppercase; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 5px; table-layout: fixed; }
         td, th { border: 1px solid #ccc; padding: 6px; vertical-align: middle; font-size: 11px; }
@@ -67,11 +69,28 @@
         canvas.signature-pad { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
         .clear-sig { position: absolute; top: 0; right: 0; font-size: 8px; background: #ddd; padding: 2px; cursor: pointer; border: none; }
 
+        /* --- STRICT A4 PRINTING --- */
         @media print {
-            @page { margin: 0; }
-            body { background: white !important; padding: 0 !important; margin: 0 !important; width: 210mm; }
+            @page { margin: 0; size: A4; } /* Force A4 size and remove browser margins */
+            html, body { width: 210mm; height: 297mm; margin: 0; padding: 0; background: white !important; }
             .app-dashboard, .clear-sig { display: none !important; }
-            .page { width: 210mm !important; height: 290mm !important; margin: 0 !important; padding: 15mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; }
+            
+            .page { 
+                width: 210mm !important; 
+                height: 296mm !important; /* 1mm safety buffer */
+                margin: 0 !important; 
+                padding: 10mm 15mm !important; /* Standard document margins */
+                border: none !important; 
+                box-shadow: none !important; 
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                overflow: hidden !important;
+                float: none !important;
+            }
+            
+            /* Ensure background colors print */
+            .section-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            th { background-color: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -114,9 +133,12 @@
 
     <div class="page">
         <div class="header">
-            <div class="header-left"><img src="stamp.png" class="logo-stamp" alt="Logo"><div class="title-main">TECHNICAL</div></div>
-            <div class="title-sub">KNOWLEDGE DISCUSSION</div>
+            <div class="header-left"><img src="stamp.png" class="logo-stamp" alt="Logo"><div class="title-main">MULTI-HQ</div></div>
+            <div class="title-sub">TECHNICAL KNOWLEDGE<br>Discussion Record</div>
         </div>
+        
+        <div class="section-bar">Technical Knowledge Checklist</div>
+        
         <div style="display: flex; gap: 15px;">
             <table style="width:50%">
                 <tr><th>Topic</th><th style="width:30px">✔</th></tr>
@@ -218,11 +240,15 @@
                 const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
                 const stop = () => { drawing = false; };
 
-                canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+                // Handle resizing gracefully
+                const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+                resize();
+                // window.addEventListener('resize', resize); // Optional: can reset sigs on resize, so maybe skip
+
                 ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
 
                 canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
-                canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); window.addEventListener('touchend', stop);
+                canvas.addEventListener('touchstart', start, {passive: false}); canvas.addEventListener('touchmove', move, {passive: false}); window.addEventListener('touchend', stop);
             });
         }
         function clearSig(id) { const c = document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
@@ -276,6 +302,11 @@
                     const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = student.data.sigs[sid];
                 });
             }
+        }
+        
+        function deleteStudent() {
+            if(!currentStudentId) return;
+            if(confirm("Delete?")) { const db = getDB(); delete db[currentStudentId]; saveDB(db); currentStudentId = null; refreshDropdown(); }
         }
 
         window.onload = () => { initSignatures(); refreshDropdown(); };
