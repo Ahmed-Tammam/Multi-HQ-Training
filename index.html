@@ -34,11 +34,11 @@
         .btn-pdf { background: #f1c40f; color: #000; }
         .btn-del { background: #c0392b; }
 
-        /* --- PAGE LAYOUT --- */
+        /* --- SCREEN PAGE LAYOUT --- */
         .page { 
             background: white; box-sizing: border-box; margin: 20px auto; padding: 15mm;
-            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 296mm;
-            position: relative; page-break-after: always;
+            border: 1px solid #ccc; box-shadow: 0 8px 16px rgba(0,0,0,0.3); width: 210mm; min-height: 297mm;
+            position: relative; 
         }
 
         .logo-stamp { height: 60px; width: auto; margin-right: 15px; vertical-align: bottom; }
@@ -54,7 +54,6 @@
         .title-main { font-size: 28px; font-weight: 900; line-height: 0.9; }
         .title-sub { text-align: right; font-weight: bold; color: #444; font-size: 11px; }
         
-        /* THE BLUE BAR STYLE */
         .section-bar { background: #002147; color: white; padding: 6px 10px; font-weight: bold; margin-top: 15px; text-transform: uppercase; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 5px; table-layout: fixed; }
@@ -69,28 +68,40 @@
         canvas.signature-pad { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
         .clear-sig { position: absolute; top: 0; right: 0; font-size: 8px; background: #ddd; padding: 2px; cursor: pointer; border: none; }
 
-        /* --- STRICT A4 PRINTING --- */
+        /* --- NUCLEAR PRINT FIX --- */
         @media print {
-            @page { margin: 0; size: A4; } /* Force A4 size and remove browser margins */
-            html, body { width: 210mm; height: 297mm; margin: 0; padding: 0; background: white !important; }
-            .app-dashboard, .clear-sig { display: none !important; }
+            @page { margin: 0; size: A4; }
             
+            html, body { 
+                width: 210mm; height: 100%; margin: 0 !important; padding: 0 !important; background: white !important; 
+            }
+            
+            /* Hide UI */
+            .app-dashboard, .clear-sig, button { display: none !important; }
+
+            /* STRICT Page Dimensions (Smaller than A4 to prevent overflow) */
             .page { 
-                width: 210mm !important; 
-                height: 296mm !important; /* 1mm safety buffer */
-                margin: 0 !important; 
-                padding: 10mm 15mm !important; /* Standard document margins */
+                width: 208mm !important;   /* 2mm Safety Buffer */
+                height: 290mm !important;  /* 7mm Safety Buffer */
+                margin: 0 auto !important; 
+                padding: 10mm 15mm !important;
                 border: none !important; 
                 box-shadow: none !important; 
+                overflow: hidden !important; /* Clip any overflows */
                 page-break-after: always !important;
-                page-break-inside: avoid !important;
-                overflow: hidden !important;
+                break-after: page !important; /* Modern iOS Syntax */
+                position: relative !important;
                 float: none !important;
             }
             
-            /* Ensure background colors print */
-            .section-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            th { background-color: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* Prevent elements from being cut in half */
+            table, tr, td, .header, .record-container { 
+                page-break-inside: avoid !important; 
+                break-inside: avoid !important;
+            }
+            
+            /* Reset Textareas for print */
+            textarea { display: block; overflow: hidden; }
         }
     </style>
 </head>
@@ -240,10 +251,8 @@
                 const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
                 const stop = () => { drawing = false; };
 
-                // Handle resizing gracefully
                 const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
                 resize();
-                // window.addEventListener('resize', resize); // Optional: can reset sigs on resize, so maybe skip
 
                 ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
 
